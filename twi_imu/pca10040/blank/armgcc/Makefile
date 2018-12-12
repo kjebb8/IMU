@@ -1,4 +1,4 @@
-PROJECT_NAME     := twi_sensor_pca10040
+PROJECT_NAME     := twi_imu_pca10040
 TARGETS          := nrf52832_xxaa
 OUTPUT_DIRECTORY := _build
 
@@ -6,7 +6,7 @@ SDK_ROOT := ../../../../../..
 PROJ_DIR := ../../..
 
 $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
-  LINKER_SCRIPT  := twi_sensor_gcc_nrf52.ld
+  LINKER_SCRIPT  := twi_imu_gcc_nrf52.ld
 
 # Source files common to all targets
 SRC_FILES += \
@@ -42,6 +42,8 @@ SRC_FILES += \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52.c \
+  $(PROJ_DIR)/source/mpu9250.c \
+  $(PROJ_DIR)/source/twim_mpu.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -70,6 +72,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/log/src \
   $(SDK_ROOT)/external/fprintf \
   $(SDK_ROOT)/components/libraries/atomic \
+  $(PROJ_DIR)/include \
 
 # Libraries common to all targets
 LIB_FILES += \

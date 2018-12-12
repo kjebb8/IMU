@@ -1,15 +1,27 @@
-#include "twi_mpu.h"
+#include "twim_mpu.h"
 
-/* TWI instance. */
-static const nrfx_twim_t m_twim = NRFX_TWIM_INSTANCE(TWI_INSTANCE_ID)
+#include "nrf_delay.h"
+#include "nrf_log.h"
+
+/* TWIM instance. */
+static const nrfx_twim_t m_twim = NRFX_TWIM_INSTANCE(TWIM_INSTANCE_ID);
 
 /* Buffer for register address */
-static uint8_t m_register_address = 0x00;
+static uint8_t m_register_address;
+
+/* Buffer for writing single byte */
+static uint8_t m_data_buffer[2];
+
+/* Indicates if operation on TWIM has ended. */
+static volatile bool m_twim_xfer_in_progress = false;
+
+//Used later
+static void twim_handler(nrfx_twim_evt_t const * p_event, void * p_context);
 
 /**
- * @brief TWI initialization.
+ * @brief TWIM initialization.
  */
-void twi_mpu_init (void)
+void twim_mpu_init (void)
 {
     ret_code_t err_code;
     const nrfx_twim_config_t twim_config = {
@@ -22,19 +34,34 @@ void twi_mpu_init (void)
     err_code = nrfx_twim_init(&m_twim, &twim_config, twim_handler, NULL);
     APP_ERROR_CHECK(err_code);
 
-    nrfx_twim_enable(&m_twi);
+    nrfx_twim_enable(&m_twim);
 }
 
-void twi_mpu_uninit (void)
+void twim_mpu_uninit (void)
 {
     nrfx_twim_disable(&m_twim);
     nrfx_twim_uninit(&m_twim);
 }
 
-void write_register_twi(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, size_t length)
+void write_register_byte(uint8_t slave_address, uint8_t register_address, uint8_t data)
 {
-    m_twi_xfer_done = false;
+    ret_code_t err_code;
+    m_data_buffer[0] = register_address;
+    m_data_buffer[1] = data;
+    const nrfx_twim_xfer_desc_t xfer_desc  = {
+        .type             = NRFX_TWIM_XFER_TX,
+        .address          = slave_address,
+        .primary_length   = sizeof(m_data_buffer),
+        .p_primary_buf    = m_data_buffer
+    };
+    wait_for_xfer();
+    m_twim_xfer_in_progress = true;
+    err_code = nrfx_twim_xfer(&m_twim, &xfer_desc, 0);
+    APP_ERROR_CHECK(err_code);
+}
 
+void write_register_twim(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, size_t length)
+{
     ret_code_t err_code;
     m_register_address = register_address; //If transfer is asynchronous, store the value off the stack
     const nrfx_twim_xfer_desc_t xfer_desc  = {
@@ -45,15 +72,14 @@ void write_register_twi(uint8_t slave_address, uint8_t register_address, uint8_t
         .p_primary_buf    = &m_register_address,
         .p_secondary_buf  = p_data
     };
-    while(nrfx_twim_is_busy);
-    err_code = nrfx_twim_xfer(&m_twim, &xfer_desc, NULL);
+    wait_for_xfer();
+    m_twim_xfer_in_progress = true;
+    err_code = nrfx_twim_xfer(&m_twim, &xfer_desc, 0);
     APP_ERROR_CHECK(err_code);
 }
 
-void read_register_twi(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, size_t length)
+void read_register_twim(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, size_t length)
 {
-    m_twi_xfer_done = false;
-
     ret_code_t err_code;
     m_register_address = register_address; //If transfer is asynchronous, store the value off the stack
     const nrfx_twim_xfer_desc_t xfer_desc  = {
@@ -64,9 +90,16 @@ void read_register_twi(uint8_t slave_address, uint8_t register_address, uint8_t 
         .p_primary_buf    = &m_register_address,
         .p_secondary_buf  = p_data
     };
-    while(nrfx_twim_is_busy);
-    err_code = nrfx_twim_xfer(&m_twim, &xfer_desc, NULL);
+    wait_for_xfer();
+    m_twim_xfer_in_progress = true;
+    err_code = nrfx_twim_xfer(&m_twim, &xfer_desc, 0);
     APP_ERROR_CHECK(err_code);
+}
+
+void wait_for_xfer(void)
+{
+    while(m_twim_xfer_in_progress);
+    while(nrfx_twim_is_busy(&m_twim));
 }
 
 /**
@@ -77,7 +110,7 @@ static void twim_handler(nrfx_twim_evt_t const * p_event, void * p_context)
     switch (p_event->type)
     {
         case NRFX_TWIM_EVT_DONE:
-            m_twim_xfer_done = true;
+            m_twim_xfer_in_progress = false;
             break;
         default:
             break;

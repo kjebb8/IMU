@@ -46,14 +46,9 @@
  * This file contains the source code for a sample application using TWI.
  *
  */
-
 #include <stdio.h>
-// #include "boards.h"
-// #include "app_util_platform.h"
-// #include "app_error.h"
-// #include "nrf_delay.h"
 
-#include "twi.mpu.h"
+#include "twim_mpu.h"
 #include "mpu9250.h"
 
 #include "nrf_log.h"
@@ -70,21 +65,25 @@ int main(void)
 
     NRF_LOG_INFO("\r\nTWI sensor example started.");
     NRF_LOG_FLUSH();
-    twi_mpu_init();
-    //IMU Init
+    twim_mpu_init();
 
-    uint8_t mpu_who_am_i = mpu9250mpu_who_am_i();
-    NRF_LOG_INFO("MPU9250 should be 0x71 and is: %d", mpu_who_am_i);
+    uint8_t who_am_i = mpu_who_am_i();
+    NRF_LOG_INFO("MPU9250 should be 0x71 and is: 0x%02x", who_am_i);
 
-    while (true)
+    if(who_am_i == 0x71)
     {
-        do
+        mpu_self_test();
+        // mpu9250_init();
+        while (true)
         {
-            __WFE();
-        } while (new_imu_data = false);
+            // do
+            // {
+                __WFE();
+            // } while (!mpu_new_data_available());
 
-        read_sensor_data();
-        NRF_LOG_FLUSH();
+            // Read IMU Data
+            NRF_LOG_FLUSH();
+        }
     }
 }
 

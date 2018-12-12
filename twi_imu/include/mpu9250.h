@@ -1,13 +1,22 @@
 #ifndef _MPU9250_H_
 #define _MPU9250_H_
 
-#include "twi_mpu.h"
+#include "mpu9250_support.h"
+#include "twim_mpu.h"
 
-#define TWI_MPU_ADDRESS    0x68
-#define WHO_AM_I_MPU9250   0x75
+typedef struct
+{
+    float yaw;
+    float pitch;
+    float roll;
+} mpu_result_t;
 
-volatile bool new_imu_data = false;
+void mpu9250_init(void);
 
-uint8_t mpu9250mpu_who_am_i();
+bool mpu_new_data_available(void);
+
+uint8_t mpu_who_am_i(void);
+
+void mpu_self_test(void);
 
 #endif // _MPU9250_H_
