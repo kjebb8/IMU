@@ -126,6 +126,8 @@
 #define ZA_OFFSET_H        0x7D
 #define ZA_OFFSET_L        0x7E
 
+#define READ_FLAG 0x80
+
 //Magnetometer Registers
 #define WHO_AM_I_AK8963  0x00 // (AKA WIA) should return 0x48
 #define AK8963_INFO      0x01

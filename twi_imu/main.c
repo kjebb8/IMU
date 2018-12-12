@@ -63,8 +63,7 @@ int main(void)
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 
-    NRF_LOG_INFO("\r\nTWI sensor example started.");
-    NRF_LOG_FLUSH();
+    NRF_LOG_INFO("TWI sensor example started.");
     twim_mpu_init();
 
     uint8_t who_am_i = mpu_who_am_i();
@@ -73,7 +72,15 @@ int main(void)
     if(who_am_i == 0x71)
     {
         mpu_self_test();
-        // mpu9250_init();
+        mpu_calibrate();
+        mpu_init();
+
+        uint8_t who_am_i_ak = mpu_who_am_i_ak8963();
+        NRF_LOG_INFO("AK8963 should be 0x48 and is: 0x%02x", who_am_i_ak);
+
+        mpu_init_ak8963();
+        NRF_LOG_INFO("Setup Successful");
+
         while (true)
         {
             // do
