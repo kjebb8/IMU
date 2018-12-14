@@ -2,7 +2,6 @@
 #define _TWIM_MPU_H_
 
 #include "nrfx_twim.h"
-#include "config.h"
 
 /* TWIM instance ID. */
 #define TWIM_INSTANCE_ID 0

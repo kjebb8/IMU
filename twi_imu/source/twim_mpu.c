@@ -1,4 +1,5 @@
 #include "twim_mpu.h"
+#include "config.h"
 
 #include "nrf_delay.h"
 #include "nrf_log.h"

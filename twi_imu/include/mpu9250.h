@@ -1,8 +1,8 @@
 #ifndef _MPU9250_H_
 #define _MPU9250_H_
 
-#include "mpu9250_support.h"
-#include "twim_mpu.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 typedef struct
 {
@@ -11,7 +11,19 @@ typedef struct
     float roll;
 } mpu_result_t;
 
-bool mpu_new_data_available(void);
+typedef enum {
+  ACCEL,
+  GYRO,
+  MAG
+} mpu_data_type_t;
+
+typedef struct
+{
+    mpu_data_type_t type;
+    float           x;
+    float           y;
+    float           z;
+} mpu_data_t;
 
 uint8_t mpu_who_am_i(void);
 
@@ -26,5 +38,21 @@ void mpu_init(void); //Base initialization
 void mpu_init_kj(void); //Custom initialization
 
 void mpu_init_ak8963(void);
+
+bool mpu_new_data_int(void);
+
+bool mpu_new_data_poll(void);
+
+const mpu_data_t * mpu_read_accel_data(void);
+
+const mpu_data_t * mpu_read_gyro_data(void);
+
+const mpu_data_t * mpu_read_mag_data(void);
+
+void mpu_read_new_data(void);
+
+void mpu_calculate_orientation(void);
+
+const mpu_result_t * mpu_get_current_orientation(void);
 
 #endif // _MPU9250_H_

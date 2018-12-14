@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015 - 2018, Nordic Semiconductor ASA
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -37,63 +37,81 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-/** @file
- * @defgroup tw_sensor_example main.c
+
+/**@cond To Make Doxygen skip documentation generation for this file.
  * @{
- * @ingroup nrf_twi_example
- * @brief TWI Sensor Example main file.
- *
- * This file contains the source code for a sample application using TWI.
- *
  */
-#include <stdio.h>
 
-#include "twim_mpu.h"
-#include "mpu9250.h"
+#include "counter.h"
+#include "nrfx_clock.h"
+#include "nrfx_rtc.h"
 
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
 
-/**
- * @brief Function for main application entry.
- */
-int main(void)
+/* RTC driver instance using RTC2.
+ * RTC0 is used by the SoftDevice, and RTC1 by the app_timer library. */
+static const nrfx_rtc_t m_rtc = NRFX_RTC_INSTANCE(2);
+
+
+static void rtc_handler(nrfx_rtc_int_type_t int_type)
 {
-    APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
-    NRF_LOG_DEFAULT_BACKENDS_INIT();
-
-    NRF_LOG_INFO("TWI sensor example started.");
-    twim_mpu_init();
-
-    uint8_t who_am_i = mpu_who_am_i();
-    NRF_LOG_INFO("MPU9250 should be 0x71 and is: 0x%02x", who_am_i);
-
-    if(who_am_i == 0x71)
-    {
-        mpu_self_test();
-        mpu_calibrate();
-        mpu_init();
-
-        uint8_t who_am_i_ak = mpu_who_am_i_ak8963();
-        NRF_LOG_INFO("AK8963 should be 0x48 and is: 0x%02x", who_am_i_ak);
-
-        mpu_init_ak8963();
-        NRF_LOG_INFO("Setup Successful");
-
-        while (true)
-        {
-            do {
-                __WFE();
-            } while(!mpu_new_data_poll());
-
-            mpu_read_new_data();
-            mpu_calculate_orientation();
-            // const mpu_result_t * orientation = mpu_get_current_orientation();
-
-            NRF_LOG_FLUSH();
-        }
-    }
+    // Likely a counter overflow.
+    APP_ERROR_CHECK(0xFFFFFFFF);
 }
 
-/** @} */
+static void lfclk_handler(nrfx_clock_evt_type_t event)
+{
+    //Do nothing
+}
+
+static void lfclk_start(void)
+{
+    ret_code_t err_code = nrfx_clock_init(lfclk_handler);
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_clock_disable();
+
+    nrfx_clock_lfclk_start();
+}
+
+void counter_init(uint16_t freq)
+{
+    lfclk_start();
+
+    ret_code_t err_code;
+
+    // Initialize the RTC instance.
+    nrfx_rtc_config_t config = NRFX_RTC_DEFAULT_CONFIG;
+
+    uint16_t pre = (uint16_t)(32768 / freq) - 1;
+    config.prescaler = pre;
+
+    err_code = nrfx_rtc_init(&m_rtc, &config, rtc_handler);
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_rtc_tick_disable(&m_rtc);
+}
+
+
+void counter_start(void)
+{
+    nrfx_rtc_counter_clear(&m_rtc);
+
+    // Power on!
+    nrfx_rtc_enable(&m_rtc);
+}
+
+
+void counter_stop(void)
+{
+    nrfx_rtc_disable(&m_rtc);
+}
+
+
+uint32_t counter_get(void)
+{
+    return(nrfx_rtc_counter_get(&m_rtc));
+}
+
+/** @}
+ *  @endcond
+ */

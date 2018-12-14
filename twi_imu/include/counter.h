@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015 - 2018, Nordic Semiconductor ASA
+ * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -37,63 +37,33 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-/** @file
- * @defgroup tw_sensor_example main.c
+
+/**@cond To Make Doxygen skip documentation generation for this file.
  * @{
- * @ingroup nrf_twi_example
- * @brief TWI Sensor Example main file.
- *
- * This file contains the source code for a sample application using TWI.
- *
  */
-#include <stdio.h>
 
-#include "twim_mpu.h"
-#include "mpu9250.h"
+#ifndef COUNTER_H__
+#define COUNTER_H__
 
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
+#include <stdint.h>
 
-/**
- * @brief Function for main application entry.
+/**@brief   Function for initializing the RTC driver instance. */
+void counter_init(uint16_t freq);
+
+
+/**@brief   Function for starting the counter. */
+void counter_start(void);
+
+
+/**@brief   Function for stopping the counter. */
+void counter_stop(void);
+
+
+/*@brief    Function for retrieving the counter value. */
+uint32_t counter_get(void);
+
+#endif // COUNTER_H__
+
+/** @}
+ *  @endcond
  */
-int main(void)
-{
-    APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
-    NRF_LOG_DEFAULT_BACKENDS_INIT();
-
-    NRF_LOG_INFO("TWI sensor example started.");
-    twim_mpu_init();
-
-    uint8_t who_am_i = mpu_who_am_i();
-    NRF_LOG_INFO("MPU9250 should be 0x71 and is: 0x%02x", who_am_i);
-
-    if(who_am_i == 0x71)
-    {
-        mpu_self_test();
-        mpu_calibrate();
-        mpu_init();
-
-        uint8_t who_am_i_ak = mpu_who_am_i_ak8963();
-        NRF_LOG_INFO("AK8963 should be 0x48 and is: 0x%02x", who_am_i_ak);
-
-        mpu_init_ak8963();
-        NRF_LOG_INFO("Setup Successful");
-
-        while (true)
-        {
-            do {
-                __WFE();
-            } while(!mpu_new_data_poll());
-
-            mpu_read_new_data();
-            mpu_calculate_orientation();
-            // const mpu_result_t * orientation = mpu_get_current_orientation();
-
-            NRF_LOG_FLUSH();
-        }
-    }
-}
-
-/** @} */

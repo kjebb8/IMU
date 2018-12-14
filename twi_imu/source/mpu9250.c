@@ -1,9 +1,19 @@
 #include <math.h>
 
 #include "mpu9250.h"
+#include "mpu9250_support.h"
+#include "twim_mpu.h"
+#include "quaternion_filters.h"
+#include "counter.h"
 
 #include "nrf_delay.h"
 #include "nrf_log.h"
+
+#define M_PI 3.14159265358979323846
+#define DEG_TO_RAD (M_PI / 180.0f)
+#define RAD_TO_DEG (180.0f / M_PI)
+
+#define PRINT_VALUES
 
 static volatile bool m_new_imu_data = false;
 
@@ -15,35 +25,38 @@ static gyro_scale_t m_gyro_scale = GFS_250DPS;
 static mag_scale_t m_mag_scale = MFS_16BITS;
 static mag_mode_t m_mag_mode = M_8HZ;
 
-// static mpu_result_t m_result; //Yaw, Pitch and Roll
-// static float m_temperature;   // Stores the real internal chip temperature in Celsius
-
-// static uint32_t m_output_rate_deltat = 0; // Used to control display output rate
-// static uint32_t m_count = 0, m_sum_count = 0; // used to control display output rate
-
-// static float m_deltat = 0.0f, m_sum = 0.0f;  // integration interval for both filter schemes
-// static uint32_t m_last_update = 0, m_first_update = 0; // used to calculate integration interval
-// static uint32_t m_time_now = 0;        // used to calculate integration interval
-
-// static int16_t m_accel_raw[3];  // Stores the 16-bit signed accelerometer sensor output
-// static int16_t m_gyro_raw[3];   // Stores the 16-bit signed gyro sensor output
-// static int16_t m_mag_raw[3];    // Stores the 16-bit signed magnetometer sensor output
-// static int16_t m_temp_raw;      // Temperature raw count output
-
-static float m_accel_res, m_gyro_res, m_mag_res; // Scale resolutions per LSB for the sensors
-
-// static float m_accel_x, m_accel_y, m_accel_z, // Variables to hold latest sensor data values
-//              m_gyro_x, m_gyro_y, m_gyro_z,
-//              m_mag_x, m_mag_y, m_mag_z;
-
-static float m_factory_mag_calibration[3] = {0, 0, 0}; // Factory mag calibration and mag bias
+static float m_self_test[6];
 
 static float m_accel_bias[3]       = {0, 0, 0}, // Bias corrections for gyro, accelerometer, and magnetometer
              m_gyro_bias[3]        = {0, 0, 0},
              m_mag_bias[3]         = {0, 0, 0}, //Used for mag calibration
              m_mag_scale_factor[3] = {0, 0, 0}; //Used for mag calibration
 
-static float m_self_test[6];
+static float m_factory_mag_calibration[3] = {0, 0, 0}; // Factory mag calibration and mag bias
+
+static float m_accel_res, m_gyro_res, m_mag_res; // Scale resolutions per LSB for the sensors
+
+static mpu_result_t m_mpu_result; //Yaw, Pitch and Roll
+
+static mpu_data_t m_accel_data, // Variables to hold latest sensor data values
+                  m_gyro_data,
+                  m_mag_data;
+
+// static float m_temperature;   // Stores the real internal chip temperature in Celsius
+
+static bool m_first_mag_data_acq = false;
+
+static uint16_t m_counter_freq; //Hz
+
+static float m_deltat = 0.0f;      // integration interval for both filter schemes
+static uint32_t m_count_last = 0; // used to calculate integration interval
+static uint32_t m_count_now = 0;    // used to calculate integration interval
+
+#ifdef PRINT_VALUES
+// Used to control display output rate
+static uint32_t m_samples_since_print = 0;
+static float m_time_since_print = 0.0f;
+#endif
 
 static void calculate_resolutions(void)
 {
@@ -114,22 +127,65 @@ static void set_mag_scale_factor(void)
     m_mag_scale_factor[2] = 0.945;
 }
 
-bool mpu_new_data_available(void)
+static void update_time(void)
 {
-    return m_new_imu_data;
+
+    m_count_now = counter_get();
+
+    // Set integration time by time elapsed since last filter update
+    if(m_count_now >= m_count_last)
+    {
+        m_deltat = (float)(m_count_now - m_count_last) / m_counter_freq;
+    }
+    else //Counter overflow
+    {
+        m_deltat = (float)(0xFFFFFF - m_count_last + m_count_now) / m_counter_freq;
+    }
+
+    m_count_last = m_count_now;
+
+#ifdef PRINT_VALUES
+    m_time_since_print += m_deltat;
+    m_samples_since_print++;
+#endif
+}
+
+static void calculate_yaw_pitch_roll(void)
+{
+    const float * q = get_q();
+
+    m_mpu_result.yaw   = RAD_TO_DEG * atan2(2.0f * (q[1] * q[2] + q[0] * q[3]),
+                                            q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
+    m_mpu_result.pitch = RAD_TO_DEG * -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+    m_mpu_result.roll  = RAD_TO_DEG * atan2(2.0f * (q[0] * q[1] + q[2] * q[3]),
+                                            q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+}
+
+static void print_values(void)
+{
+    if(m_time_since_print > 0.5f)
+    {
+        NRF_LOG_RAW_INFO("\r\nYaw: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_mpu_result.yaw));
+        NRF_LOG_RAW_INFO("\tPitch: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_mpu_result.pitch));
+        NRF_LOG_RAW_INFO("\tRoll: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_mpu_result.roll));
+        NRF_LOG_RAW_INFO("\tRate: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_samples_since_print / m_time_since_print));
+
+        m_samples_since_print = 0;
+        m_time_since_print = 0;
+    }
 }
 
 uint8_t mpu_who_am_i(void)
 {
     uint8_t who_am_i;
-    twim_mpu_read_register(m_mpu_address, WHO_AM_I_MPU9250, &who_am_i, sizeof(who_am_i));
+    twim_mpu_read_register(m_mpu_address, WHO_AM_I_MPU9250, &who_am_i, 1);
     return who_am_i;
 }
 
 uint8_t mpu_who_am_i_ak8963(void)
 {
     uint8_t who_am_i;
-    twim_mpu_read_register(m_ak_address, WHO_AM_I_AK8963, &who_am_i, sizeof(who_am_i));
+    twim_mpu_read_register(m_ak_address, WHO_AM_I_AK8963, &who_am_i, 1);
     return who_am_i;
 }
 
@@ -542,6 +598,10 @@ void mpu_init(void)
     nrf_delay_ms(100);
 
     calculate_resolutions();
+
+    m_counter_freq = 800;
+    counter_init(m_counter_freq);
+    counter_start();
 }
 
 void mpu_init_kj(void)
@@ -585,12 +645,16 @@ void mpu_init_kj(void)
     nrf_delay_ms(100);
 
     calculate_resolutions();
+
+    m_counter_freq = 200;
+    counter_init(m_counter_freq);
+    counter_start();
 }
 
 void mpu_init_ak8963(void)
 {
     // First extract the factory calibration for each magnetometer axis
-    uint8_t rawData[3];  // x/y/z gyro calibration data stored here
+    uint8_t raw_data[3];  // x/y/z gyro calibration data stored here
     // TODO: Test this!! Likely doesn't work
     twim_mpu_write_register_byte(AK8963_ADDRESS, AK8963_CNTL, 0x00); // Power down magnetometer
     nrf_delay_ms(10);
@@ -599,12 +663,12 @@ void mpu_init_ak8963(void)
     nrf_delay_ms(10);
 
     // Read the x-, y-, and z-axis calibration values
-    twim_mpu_read_register(AK8963_ADDRESS, AK8963_ASAX, &rawData[0], 3);
+    twim_mpu_read_register(AK8963_ADDRESS, AK8963_ASAX, &raw_data[0], 3);
 
     // Return x-axis sensitivity adjustment values, etc.
-    m_factory_mag_calibration[0] =  (float)(rawData[0] - 128)/256. + 1.;
-    m_factory_mag_calibration[1] =  (float)(rawData[1] - 128)/256. + 1.;
-    m_factory_mag_calibration[2] =  (float)(rawData[2] - 128)/256. + 1.;
+    m_factory_mag_calibration[0] =  (float)(raw_data[0] - 128)/256. + 1.;
+    m_factory_mag_calibration[1] =  (float)(raw_data[1] - 128)/256. + 1.;
+    m_factory_mag_calibration[2] =  (float)(raw_data[2] - 128)/256. + 1.;
 
     twim_mpu_write_register_byte(AK8963_ADDRESS, AK8963_CNTL, 0x00); // Power down magnetometer
     nrf_delay_ms(10);
@@ -626,4 +690,129 @@ void mpu_init_ak8963(void)
     {
         NRF_LOG_RAW_INFO("fact mag cal: " NRF_LOG_FLOAT_MARKER "\r\n", NRF_LOG_FLOAT(m_factory_mag_calibration[i]));
     }
+}
+
+bool mpu_new_data_int(void)
+{
+    return m_new_imu_data;
+}
+
+bool mpu_new_data_poll(void)
+{
+    uint8_t data_status;
+    twim_mpu_read_register(m_mpu_address, INT_STATUS, &data_status, 1);
+    return (data_status & 0x01);
+}
+
+const mpu_data_t * mpu_read_accel_data(void)
+{
+    uint8_t raw_data[6];  // x/y/z accel register data stored here
+    int16_t volt_data[3];
+    // Read the six raw data registers into data array
+    twim_mpu_read_register(m_mpu_address, ACCEL_XOUT_H, &raw_data[0], 6);
+
+    // Turn the MSB and LSB into a signed 16-bit value
+    volt_data[0] = ((int16_t)raw_data[0] << 8) | raw_data[1];
+    volt_data[1] = ((int16_t)raw_data[2] << 8) | raw_data[3];
+    volt_data[2] = ((int16_t)raw_data[4] << 8) | raw_data[5];
+
+    // Now we'll calculate the accleration value into actual g's
+    // This depends on scale being set
+    m_accel_data.type = ACCEL,
+    m_accel_data.x    = (float)volt_data[0] * m_accel_res - m_accel_bias[0];
+    m_accel_data.y    = (float)volt_data[1] * m_accel_res - m_accel_bias[1];
+    m_accel_data.z    = (float)volt_data[2] * m_accel_res - m_accel_bias[2];
+
+    return &m_accel_data;
+}
+
+const mpu_data_t * mpu_read_gyro_data(void)
+{
+    uint8_t raw_data[6];  // x/y/z gyro register data stored here
+    int16_t volt_data[3];
+    // Read the six raw data registers into data array
+    twim_mpu_read_register(m_mpu_address, GYRO_XOUT_H, &raw_data[0], 6);
+
+    // Turn the MSB and LSB into a signed 16-bit value
+    volt_data[0] = ((int16_t)raw_data[0] << 8) | raw_data[1];
+    volt_data[1] = ((int16_t)raw_data[2] << 8) | raw_data[3];
+    volt_data[2] = ((int16_t)raw_data[4] << 8) | raw_data[5];
+
+    // Calculate the gyro value into actual degrees per second
+    // This depends on scale being set
+    m_gyro_data.type = GYRO,
+    m_gyro_data.x    = (float)volt_data[0] * m_gyro_res - m_gyro_bias[0];
+    m_gyro_data.y    = (float)volt_data[1] * m_gyro_res - m_gyro_bias[1];
+    m_gyro_data.z    = (float)volt_data[2] * m_gyro_res - m_gyro_bias[2];
+
+    return &m_gyro_data;
+}
+
+const mpu_data_t * mpu_read_mag_data(void)
+{
+    do
+    {
+        // Wait for magnetometer data ready bit to be set
+        uint8_t st1;
+        twim_mpu_read_register(AK8963_ADDRESS, AK8963_ST1, &st1, 1);
+        if (st1 & 0x01)
+        {
+            // x/y/z mag register data, ST2 register stored here, must read ST2 at end
+            // of data acquisition
+            uint8_t raw_data[7];
+
+            // Read the six raw data and ST2 registers sequentially into data array
+            twim_mpu_read_register(AK8963_ADDRESS, AK8963_XOUT_L, &raw_data[0], 7);
+            uint8_t st2 = raw_data[6]; // End data read by reading ST2 register
+
+            // Check if magnetic sensor overflow set, if not then report data
+            if (!(st2 & 0x08))
+            {
+                int16_t volt_data[3];
+                // Turn the MSB and LSB into a signed 16-bit value
+                // Data stored as little Endian
+                volt_data[0] = ((int16_t)raw_data[1] << 8) | raw_data[0];
+                volt_data[1] = ((int16_t)raw_data[3] << 8) | raw_data[2];
+                volt_data[2] = ((int16_t)raw_data[5] << 8) | raw_data[4];
+
+                // Calculate the magnetometer values in milliGauss
+                // Include factory calibration per data sheet and user environmental
+                // corrections
+                // Get actual magnetometer value, this depends on scale being set
+                m_mag_data.type = MAG,
+                m_mag_data.x = ( (float)volt_data[0] * m_mag_res * m_factory_mag_calibration[0] - m_mag_bias[0] ) * m_mag_scale_factor[0];
+                m_mag_data.y = ( (float)volt_data[1] * m_mag_res * m_factory_mag_calibration[1] - m_mag_bias[1] ) * m_mag_scale_factor[1];
+                m_mag_data.z = ( (float)volt_data[2] * m_mag_res * m_factory_mag_calibration[2] - m_mag_bias[2] ) * m_mag_scale_factor[2];
+
+                m_first_mag_data_acq = true;
+            }
+        }
+    } while(!m_first_mag_data_acq);
+
+    return &m_mag_data;
+}
+
+void mpu_read_new_data(void)
+{
+    mpu_read_accel_data();
+    mpu_read_gyro_data();
+    mpu_read_mag_data();
+}
+
+void mpu_calculate_orientation(void)
+{
+    update_time();
+    mahony_quaternion_update(m_accel_data.x, m_accel_data.y, m_accel_data.z,
+                             m_gyro_data.x * DEG_TO_RAD, m_gyro_data.y * DEG_TO_RAD, m_gyro_data.z * DEG_TO_RAD,
+                             m_mag_data.y, m_mag_data.x, -m_mag_data.z, m_deltat);
+    calculate_yaw_pitch_roll();
+
+#ifdef PRINT_VALUES
+    print_values();
+#endif
+}
+
+const mpu_result_t * mpu_get_current_orientation(void)
+{
+    return &m_mpu_result;
 }
