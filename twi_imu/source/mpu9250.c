@@ -3,17 +3,9 @@
 #include "mpu9250.h"
 #include "mpu9250_support.h"
 #include "twim_mpu.h"
-#include "quaternion_filters.h"
-#include "counter.h"
 
 #include "nrf_delay.h"
 #include "nrf_log.h"
-
-#define M_PI 3.14159265358979323846
-#define DEG_TO_RAD (M_PI / 180.0f)
-#define RAD_TO_DEG (180.0f / M_PI)
-
-#define PRINT_VALUES
 
 static volatile bool m_new_imu_data = false;
 
@@ -36,8 +28,6 @@ static float m_factory_mag_calibration[3] = {0, 0, 0}; // Factory mag calibratio
 
 static float m_accel_res, m_gyro_res, m_mag_res; // Scale resolutions per LSB for the sensors
 
-static mpu_result_t m_mpu_result; //Yaw, Pitch and Roll
-
 static mpu_data_t m_accel_data, // Variables to hold latest sensor data values
                   m_gyro_data,
                   m_mag_data;
@@ -45,18 +35,6 @@ static mpu_data_t m_accel_data, // Variables to hold latest sensor data values
 // static float m_temperature;   // Stores the real internal chip temperature in Celsius
 
 static bool m_first_mag_data_acq = false;
-
-static uint16_t m_counter_freq; //Hz
-
-static float m_deltat = 0.0f;      // integration interval for both filter schemes
-static uint32_t m_count_last = 0; // used to calculate integration interval
-static uint32_t m_count_now = 0;    // used to calculate integration interval
-
-#ifdef PRINT_VALUES
-// Used to control display output rate
-static uint32_t m_samples_since_print = 0;
-static float m_time_since_print = 0.0f;
-#endif
 
 static void calculate_resolutions(void)
 {
@@ -125,54 +103,6 @@ static void set_mag_scale_factor(void)
     m_mag_scale_factor[0] = 0.985;
     m_mag_scale_factor[1] = 1.05;
     m_mag_scale_factor[2] = 0.945;
-}
-
-static void update_time(void)
-{
-
-    m_count_now = counter_get();
-
-    // Set integration time by time elapsed since last filter update
-    if(m_count_now >= m_count_last)
-    {
-        m_deltat = (float)(m_count_now - m_count_last) / m_counter_freq;
-    }
-    else //Counter overflow
-    {
-        m_deltat = (float)(0xFFFFFF - m_count_last + m_count_now) / m_counter_freq;
-    }
-
-    m_count_last = m_count_now;
-
-#ifdef PRINT_VALUES
-    m_time_since_print += m_deltat;
-    m_samples_since_print++;
-#endif
-}
-
-static void calculate_yaw_pitch_roll(void)
-{
-    const float * q = get_q();
-
-    m_mpu_result.yaw   = RAD_TO_DEG * atan2(2.0f * (q[1] * q[2] + q[0] * q[3]),
-                                            q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
-    m_mpu_result.pitch = RAD_TO_DEG * -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-    m_mpu_result.roll  = RAD_TO_DEG * atan2(2.0f * (q[0] * q[1] + q[2] * q[3]),
-                                            q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
-}
-
-static void print_values(void)
-{
-    if(m_time_since_print > 0.5f)
-    {
-        NRF_LOG_RAW_INFO("\r\nYaw: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_mpu_result.yaw));
-        NRF_LOG_RAW_INFO("\tPitch: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_mpu_result.pitch));
-        NRF_LOG_RAW_INFO("\tRoll: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_mpu_result.roll));
-        NRF_LOG_RAW_INFO("\tRate: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(m_samples_since_print / m_time_since_print));
-
-        m_samples_since_print = 0;
-        m_time_since_print = 0;
-    }
 }
 
 uint8_t mpu_who_am_i(void)
@@ -519,7 +449,7 @@ void mpu_calibrate(void)
     NRF_LOG_RAW_INFO("\r\nz-axis gyro bias: " NRF_LOG_FLOAT_MARKER "%%\r\n", NRF_LOG_FLOAT(m_gyro_bias[2]));
 }
 
-void mpu_init(void)
+void mpu_init(const mpu_init_t * p_params)
 {
     // wake up device
     // Clear sleep mode bit (6), enable all sensors
@@ -531,96 +461,39 @@ void mpu_init(void)
     twim_mpu_write_register_byte(m_mpu_address, PWR_MGMT_1, 0x01);
     nrf_delay_ms(200);
 
-    // Configure Gyro and Thermometer
-    // Disable FSYNC and set thermometer and gyro bandwidth to 41 and 42 Hz,
-    // respectively;
-    // minimum delay time for this setting is 5.9 ms, which means sensor fusion
-    // update rates cannot be higher than 1 / 0.0059 = 170 Hz
-    // DLPF_CFG = bits 2:0 = 011; this limits the sample rate to 1000 Hz for both
-    // With the MPU9250, it is possible to get gyro sample rates of 32 kHz (!),
-    // 8 kHz, or 1 kHz
-    twim_mpu_write_register_byte(m_mpu_address, IMU_CONFIG, 0x03);
+    uint8_t c;
 
-    // Set sample rate = gyroscope output rate/(1 + SMPLRT_DIV)
-    // Use a 200 Hz rate; a rate consistent with the filter update rate
-    // determined inset in CONFIG above.
-    twim_mpu_write_register_byte(m_mpu_address, SMPLRT_DIV, 0x04);
+    if(p_params->sample_rate == HZ_200)
+    {
+        //41 Hz bandwidth, 5.9 ms delay, 1kHz internal sample rate
+        twim_mpu_write_register_byte(m_mpu_address, IMU_CONFIG, 0x03);
+
+        // Set sample rate = 200 Hz = gyroscope output rate/(1 + SMPLRT_DIV)
+        twim_mpu_write_register_byte(m_mpu_address, SMPLRT_DIV, 0x04);
+
+        twim_mpu_read_register(m_mpu_address, ACCEL_CONFIG2, &c, 1);
+        c = c & ~0x0F; // Clear accel_fchoice_b (bit 3) and A_DLPFG (bits [2:0])
+        c = c | 0x03;  //41 Hz bandwidth, 11.80 ms delay, 1kHz internal sample rate
+        twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG2, c);
+    }
+    else if(p_params->sample_rate == HZ_50)
+    {
+        //10 Hz bandwidth, 17.85 ms delay, 1kHz internal sample rate
+        twim_mpu_write_register_byte(m_mpu_address, IMU_CONFIG, 0x05);
+
+        // Set sample rate = 50 Hz = gyroscope output rate/(1 + SMPLRT_DIV)
+        twim_mpu_write_register_byte(m_mpu_address, SMPLRT_DIV, 0x13);
+
+        twim_mpu_read_register(m_mpu_address, ACCEL_CONFIG2, &c, 1);
+        c = c & ~0x0F; // Clear accel_fchoice_b (bit 3) and A_DLPFG (bits [2:0])
+        c = c | 0x05;  //10 Hz bandwidth, 35.7 ms delay, 1kHz internal sample rate
+        twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG2, c);
+    }
 
     // Set gyroscope full scale range
     // Range selects FS_SEL and AFS_SEL are 0 - 3, so 2-bit values are
     // left-shifted into positions 4:3
 
-    // get current GYRO_CONFIG register value
-    uint8_t c;
-    twim_mpu_read_register(m_mpu_address, GYRO_CONFIG, &c, 1);
-    // c = c & ~0xE0; // Clear self-test bits [7:5]
-    c = c & ~0x03; // Clear Fchoice bits [1:0]
-    c = c & ~0x18; // Clear AFS bits [4:3]
-    c = c | m_gyro_scale << 3; // Set full scale range for the gyro
-    // Set Fchoice for the gyro to 11 by writing its inverse to bits 1:0 of
-    // GYRO_CONFIG
-    // c =| 0x00;
-    // Write new GYRO_CONFIG value to register
-    twim_mpu_write_register_byte(m_mpu_address, GYRO_CONFIG, c);
-
-    // Set accelerometer full-scale range configuration
-    // Get current ACCEL_CONFIG register value
-    twim_mpu_read_register(m_mpu_address, ACCEL_CONFIG, &c, 1);
-    // c = c & ~0xE0; // Clear self-test bits [7:5]
-    c = c & ~0x18;  // Clear AFS bits [4:3]
-    c = c | m_accel_scale << 3; // Set full scale range for the accelerometer
-    // Write new ACCEL_CONFIG register value
-    twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG, c);
-
-    // Set accelerometer sample rate configuration
-    // It is possible to get a 4 kHz sample rate from the accelerometer by
-    // choosing 1 for accel_fchoice_b bit [3]; in this case the bandwidth is
-    // 1.13 kHz
-    // Get current ACCEL_CONFIG2 register value
-    twim_mpu_read_register(m_mpu_address, ACCEL_CONFIG2, &c, 1);
-    c = c & ~0x0F; // Clear accel_fchoice_b (bit 3) and A_DLPFG (bits [2:0])
-    c = c | 0x03;  // Set accelerometer rate to 1 kHz and bandwidth to 41 Hz
-    // Write new ACCEL_CONFIG2 register value
-    twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG2, c);
-    // The accelerometer, gyro, and thermometer are set to 1 kHz sample rates,
-    // but all these rates are further reduced by a factor of 5 to 200 Hz because
-    // of the SMPLRT_DIV setting
-
-    // Configure Interrupts and Bypass Enable
-    // Set interrupt pin active high, push-pull, hold interrupt pin level HIGH until interrupt cleared,
-    // clear on read of INT_STATUS, and enable I2C_BYPASS_EN so additional chips
-    // can join the I2C bus and all can be controlled by the Arduino as master
-    // twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x22);
-    // twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);
-    twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
-    twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
-
-    nrf_delay_ms(100);
-
-    calculate_resolutions();
-
-    m_counter_freq = 800;
-    counter_init(m_counter_freq);
-    counter_start();
-}
-
-void mpu_init_kj(void)
-{
-    // Clear sleep mode bit (6), enable all sensors
-    twim_mpu_write_register_byte(m_mpu_address, PWR_MGMT_1, 0x00);
-    nrf_delay_ms(100); // Wait for all registers to reset
-
-    // Auto select clock source to be PLL gyroscope reference if ready else
-    twim_mpu_write_register_byte(m_mpu_address, PWR_MGMT_1, 0x01);
-    nrf_delay_ms(200);
-
-    //10 Hz bandwidth, 17.85 ms delay, 1kHz internal sample rate
-    twim_mpu_write_register_byte(m_mpu_address, IMU_CONFIG, 0x05);
-
-    // Set sample rate = 50 Hz = gyroscope output rate/(1 + SMPLRT_DIV)
-    twim_mpu_write_register_byte(m_mpu_address, SMPLRT_DIV, 0x13);
-
-    uint8_t c;
     twim_mpu_read_register(m_mpu_address, GYRO_CONFIG, &c, 1);
     c = c & ~0x03; // Clear Fchoice bits [1:0]
     c = c & ~0x18; // Clear AFS bits [4:3]
@@ -632,23 +505,20 @@ void mpu_init_kj(void)
     c = c | m_accel_scale << 3; // Set full scale range for the accelerometer
     twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG, c);
 
-    twim_mpu_read_register(m_mpu_address, ACCEL_CONFIG2, &c, 1);
-    c = c & ~0x0F; // Clear accel_fchoice_b (bit 3) and A_DLPFG (bits [2:0])
-    c = c | 0x05;  //10 Hz bandwidth, 35.7 ms delay, 1kHz internal sample rate
-    twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG2, c);
-
-    // twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x22);
-    // twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);
-    twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
-    twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
+    if(p_params->data_notification == POLLING)
+    {
+        twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x02); //INT pin held high until reading INT_STATUS register
+        twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);  //Disable data ready propagation to interrupt pin
+    }
+    else if(p_params->data_notification == INTERRUPT)
+    {
+        twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
+        twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
+    }
 
     nrf_delay_ms(100);
 
     calculate_resolutions();
-
-    m_counter_freq = 200;
-    counter_init(m_counter_freq);
-    counter_start();
 }
 
 void mpu_init_ak8963(void)
@@ -790,29 +660,4 @@ const mpu_data_t * mpu_read_mag_data(void)
     } while(!m_first_mag_data_acq);
 
     return &m_mag_data;
-}
-
-void mpu_read_new_data(void)
-{
-    mpu_read_accel_data();
-    mpu_read_gyro_data();
-    mpu_read_mag_data();
-}
-
-void mpu_calculate_orientation(void)
-{
-    update_time();
-    mahony_quaternion_update(m_accel_data.x, m_accel_data.y, m_accel_data.z,
-                             m_gyro_data.x * DEG_TO_RAD, m_gyro_data.y * DEG_TO_RAD, m_gyro_data.z * DEG_TO_RAD,
-                             m_mag_data.y, m_mag_data.x, -m_mag_data.z, m_deltat);
-    calculate_yaw_pitch_roll();
-
-#ifdef PRINT_VALUES
-    print_values();
-#endif
-}
-
-const mpu_result_t * mpu_get_current_orientation(void)
-{
-    return &m_mpu_result;
 }

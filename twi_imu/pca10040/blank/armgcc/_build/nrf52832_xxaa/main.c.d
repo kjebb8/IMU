@@ -63,9 +63,10 @@ _build/nrf52832_xxaa/main.c.o: ../../../main.c \
  ../../../../../../components/libraries/util/sdk_resources.h \
  ../../../../../../modules/nrfx/drivers/nrfx_errors.h \
  ../../../../../../modules/nrfx/hal/nrf_twim.h ../../../include/mpu9250.h \
- ../../../../../../modules/nrfx/drivers/include/nrfx_gpiote.h \
- ../../../../../../modules/nrfx/hal/nrf_gpiote.h \
- ../../../../../../modules/nrfx/hal/nrf_gpio.h ../../../config.h \
+ ../../../include/quaternion_filters.h ../../../config.h \
+ ../../../include/app_time_keeper.h \
+ ../../../include/orientation_calculator.h \
+ ../../../include/gpio_data_int.h \
  ../../../../../../components/libraries/log/nrf_log.h \
  ../../../../../../components/libraries/util/sdk_common.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/string.h \
@@ -220,13 +221,15 @@ _build/nrf52832_xxaa/main.c.o: ../../../main.c \
 
 ../../../include/mpu9250.h:
 
-../../../../../../modules/nrfx/drivers/include/nrfx_gpiote.h:
-
-../../../../../../modules/nrfx/hal/nrf_gpiote.h:
-
-../../../../../../modules/nrfx/hal/nrf_gpio.h:
+../../../include/quaternion_filters.h:
 
 ../../../config.h:
+
+../../../include/app_time_keeper.h:
+
+../../../include/orientation_calculator.h:
+
+../../../include/gpio_data_int.h:
 
 ../../../../../../components/libraries/log/nrf_log.h:
 

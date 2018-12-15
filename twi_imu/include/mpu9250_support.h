@@ -146,29 +146,28 @@
 #define AK8963_ASAY      0x11  // Fuse ROM y-axis sensitivity adjustment value
 #define AK8963_ASAZ      0x12  // Fuse ROM z-axis sensitivity adjustment value
 
-typedef enum
-{
-  AFS_2G = 0,
-  AFS_4G,
-  AFS_8G,
-  AFS_16G
+typedef enum {
+    AFS_2G = 0,
+    AFS_4G,
+    AFS_8G,
+    AFS_16G
 } accel_scale_t;
 
 typedef enum {
-  GFS_250DPS = 0,
-  GFS_500DPS,
-  GFS_1000DPS,
-  GFS_2000DPS
+    GFS_250DPS = 0,
+    GFS_500DPS,
+    GFS_1000DPS,
+    GFS_2000DPS
 } gyro_scale_t;
 
 typedef enum {
-  MFS_14BITS = 0, // 0.6 mG per LSB
-  MFS_16BITS      // 0.15 mG per LSB
+    MFS_14BITS = 0, // 0.6 mG per LSB
+    MFS_16BITS      // 0.15 mG per LSB
 } mag_scale_t;
 
 typedef enum {
-  M_8HZ = 0x02,  // 8 Hz update
-  M_100HZ = 0x06 // 100 Hz continuous magnetometer
+    M_8HZ = 0x02,  // 8 Hz update
+    M_100HZ = 0x06 // 100 Hz continuous magnetometer
 } mag_mode_t;
 
 #endif //_MPU9250_SUPPORT_H_

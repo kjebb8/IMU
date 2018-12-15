@@ -46,6 +46,9 @@ SRC_FILES += \
   $(PROJ_DIR)/source/twim_mpu.c \
   $(PROJ_DIR)/source/counter.c \
   $(PROJ_DIR)/source/quaternion_filters.c \
+  $(PROJ_DIR)/source/app_time_keeper.c \
+  $(PROJ_DIR)/source/gpio_data_int.c \
+  $(PROJ_DIR)/source/orientation_calculator.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_rtc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power_clock.c \

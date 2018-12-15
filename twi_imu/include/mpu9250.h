@@ -4,18 +4,28 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct
-{
-    float yaw;
-    float pitch;
-    float roll;
-} mpu_result_t;
+typedef enum {
+    HZ_200,
+    HZ_50
+} mpu_sample_rate_t;
 
 typedef enum {
-  ACCEL,
-  GYRO,
-  MAG
+    POLLING,
+    INTERRUPT
+} mpu_data_ready_t;
+
+typedef enum {
+    ACCEL,
+    GYRO,
+    MAG
 } mpu_data_type_t;
+
+typedef struct
+{
+    mpu_sample_rate_t sample_rate;
+    mpu_data_ready_t  data_notification;
+} mpu_init_t;
+
 
 typedef struct
 {
@@ -33,26 +43,18 @@ void mpu_self_test(void);
 
 void mpu_calibrate(void);
 
-void mpu_init(void); //Base initialization
-
-void mpu_init_kj(void); //Custom initialization
+void mpu_init(const mpu_init_t * p_params); //Base initialization
 
 void mpu_init_ak8963(void);
 
 bool mpu_new_data_int(void);
 
-bool mpu_new_data_poll(void);
+bool mpu_new_data_poll(void); //Use if POLLING mode
 
 const mpu_data_t * mpu_read_accel_data(void);
 
 const mpu_data_t * mpu_read_gyro_data(void);
 
 const mpu_data_t * mpu_read_mag_data(void);
-
-void mpu_read_new_data(void);
-
-void mpu_calculate_orientation(void);
-
-const mpu_result_t * mpu_get_current_orientation(void);
 
 #endif // _MPU9250_H_
