@@ -51,9 +51,32 @@
 #include "twim_mpu.h"
 #include "mpu9250.h"
 
+#include "nrfx_gpiote.h"
+#include "config.h"
+
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
+
+static volatile bool new_data_ready = false;
+
+static void gpio_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+    new_data_ready = true;
+}
+
+static void gpio_int_init(void)
+{
+    ret_code_t err_code;
+    err_code = nrfx_gpiote_init();
+    APP_ERROR_CHECK(err_code);
+
+    const nrfx_gpiote_in_config_t config = NRFX_GPIOTE_CONFIG_IN_SENSE_LOTOHI(false);
+    err_code = nrfx_gpiote_in_init(INTERRUPT_PIN, &config, gpio_handler);
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_gpiote_in_event_enable(INTERRUPT_PIN, true);
+}
 
 /**
  * @brief Function for main application entry.
@@ -63,7 +86,7 @@ int main(void)
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 
-    NRF_LOG_INFO("TWI sensor example started.");
+    NRF_LOG_INFO("IMU Program Started.");
     twim_mpu_init();
 
     uint8_t who_am_i = mpu_who_am_i();
@@ -71,21 +94,31 @@ int main(void)
 
     if(who_am_i == 0x71)
     {
+        NRF_LOG_INFO("Self Test");
         mpu_self_test();
+        NRF_LOG_INFO("Calibration");
         mpu_calibrate();
+
+        NRF_LOG_INFO("GPIO Init");
+        gpio_int_init();
+        NRF_LOG_INFO("MPU Init");
         mpu_init();
 
         uint8_t who_am_i_ak = mpu_who_am_i_ak8963();
         NRF_LOG_INFO("AK8963 should be 0x48 and is: 0x%02x", who_am_i_ak);
 
+        NRF_LOG_INFO("Mag Init");
         mpu_init_ak8963();
         NRF_LOG_INFO("Setup Successful");
+        NRF_LOG_FLUSH();
 
         while (true)
         {
             do {
                 __WFE();
-            } while(!mpu_new_data_poll());
+            // } while(!mpu_new_data_poll());
+            } while(!new_data_ready);
+            new_data_ready = false;
 
             mpu_read_new_data();
             mpu_calculate_orientation();

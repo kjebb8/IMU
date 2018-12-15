@@ -292,12 +292,12 @@ void mpu_self_test(void)
         m_self_test[i+3] = 100.0 * ((float)(g_st_avg[i] - g_avg[i])) / factory_trim[i+3] - 100.;
     }
 
-    NRF_LOG_RAW_INFO("\r\nx-axis self test: acceleration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[0]));
+    NRF_LOG_RAW_INFO("x-axis self test: acceleration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[0]));
     NRF_LOG_RAW_INFO("\r\ny-axis self test: acceleration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[1]));
     NRF_LOG_RAW_INFO("\r\nx-axis self test: acceleration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[2]));
     NRF_LOG_RAW_INFO("\r\nx-axis self test: gyration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[3]));
     NRF_LOG_RAW_INFO("\r\ny-axis self test: gyration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[4]));
-    NRF_LOG_RAW_INFO("\r\nz-axis self test: gyration trim within: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_self_test[5]));
+    NRF_LOG_RAW_INFO("\r\nz-axis self test: gyration trim within: " NRF_LOG_FLOAT_MARKER "%%\r\n", NRF_LOG_FLOAT(m_self_test[5]));
 }
 
 // Function which accumulates gyro and accelerometer data after device
@@ -418,7 +418,7 @@ void mpu_calibrate(void)
 
     for(int i = 0; i < 6; i++)
     {
-        NRF_LOG_RAW_INFO("\r\ngyro data[%d]: %d", i, data[i]);
+        NRF_LOG_RAW_INFO("gyro data[%d]: %d\r\n", i, data[i]);
     }
 
     // Push gyro biases to hardware registers
@@ -493,7 +493,7 @@ void mpu_calibrate(void)
 
     for(int i = 0; i < 6; i++)
     {
-        NRF_LOG_RAW_INFO("\r\naccel data[%d]: %d", i, data[i]);
+        NRF_LOG_RAW_INFO("accel data[%d]: %d\r\n", i, data[i]);
     }
 
     // Apparently this is not working for the acceleration biases in the MPU-9250
@@ -511,7 +511,7 @@ void mpu_calibrate(void)
     m_accel_bias[1] = (float)accel_bias_raw[1]/(float)accel_sensitivity;
     m_accel_bias[2] = (float)accel_bias_raw[2]/(float)accel_sensitivity;
 
-    NRF_LOG_RAW_INFO("\r\nx-axis accel bias: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_accel_bias[0]));
+    NRF_LOG_RAW_INFO("x-axis accel bias: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_accel_bias[0]));
     NRF_LOG_RAW_INFO("\r\ny-axis accel bias: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_accel_bias[1]));
     NRF_LOG_RAW_INFO("\r\nx-axis accel bias: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_accel_bias[2]));
     NRF_LOG_RAW_INFO("\r\nx-axis gyro bias: " NRF_LOG_FLOAT_MARKER "%%", NRF_LOG_FLOAT(m_gyro_bias[0]));
@@ -590,10 +590,10 @@ void mpu_init(void)
     // Set interrupt pin active high, push-pull, hold interrupt pin level HIGH until interrupt cleared,
     // clear on read of INT_STATUS, and enable I2C_BYPASS_EN so additional chips
     // can join the I2C bus and all can be controlled by the Arduino as master
-    twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x22);
-    twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);
-    // twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
-    // twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
+    // twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x22);
+    // twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);
+    twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
+    twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
 
     nrf_delay_ms(100);
 
@@ -637,10 +637,10 @@ void mpu_init_kj(void)
     c = c | 0x05;  //10 Hz bandwidth, 35.7 ms delay, 1kHz internal sample rate
     twim_mpu_write_register_byte(m_mpu_address, ACCEL_CONFIG2, c);
 
-    twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x22);
-    twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);
-    // twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
-    // twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
+    // twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x22);
+    // twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x00);
+    twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
+    twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
 
     nrf_delay_ms(100);
 

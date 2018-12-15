@@ -50,6 +50,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power_clock.c \
   $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_clock.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -84,7 +85,7 @@ INC_FOLDERS += \
 LIB_FILES += \
 
 # Optimization flags
-OPT = -O3 -g3
+OPT = -O0 -g3
 # Uncomment the line below to enable link time optimization
 #OPT += -flto
 
