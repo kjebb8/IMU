@@ -24,6 +24,7 @@ typedef struct
 {
     mpu_sample_rate_t sample_rate;
     mpu_data_ready_t  data_notification;
+    uint32_t          interrupt_pin; //Put 0 if in polling mode. It is ignored
 } mpu_init_t;
 
 typedef struct
@@ -49,6 +50,8 @@ void mpu_init_ak8963(void);
 bool mpu_new_data_int(void);
 
 bool mpu_new_data_poll(void); //Use if POLLING mode
+
+bool mpu_new_data_int(void); //Use if INTERRUPT mode
 
 const mpu_data_t * mpu_read_accel_data(void);
 

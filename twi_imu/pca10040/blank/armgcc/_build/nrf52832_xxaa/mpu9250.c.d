@@ -21,6 +21,7 @@ _build/nrf52832_xxaa/mpu9250.c.o: ../../../source/mpu9250.c \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/sys/_stdint.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/lib/gcc/arm-none-eabi/6.3.1/include/stdbool.h \
  ../../../include/mpu9250_support.h ../../../include/twim_mpu.h \
+ ../../../include/gpio_data_int.h \
  ../../../../../../components/libraries/delay/nrf_delay.h \
  ../../../../../../modules/nrfx/nrfx.h \
  ../../../../../../integration/nrfx/nrfx_config.h ../config/sdk_config.h \
@@ -123,6 +124,8 @@ _build/nrf52832_xxaa/mpu9250.c.o: ../../../source/mpu9250.c \
 ../../../include/mpu9250_support.h:
 
 ../../../include/twim_mpu.h:
+
+../../../include/gpio_data_int.h:
 
 ../../../../../../components/libraries/delay/nrf_delay.h:
 

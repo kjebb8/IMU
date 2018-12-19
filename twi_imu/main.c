@@ -54,7 +54,6 @@
 #include "config.h"
 #include "app_time_keeper.h"
 #include "orientation_calculator.h"
-#include "gpio_data_int.h"
 #include "uarte_mpu.h"
 
 #include "nrf_log.h"
@@ -62,6 +61,8 @@
 #include "nrf_log_default_backends.h"
 
 #define PRINT_VALUES
+// #define UART_OUTPUT
+
 //Math Help
 #define M_PI 3.14159265358979323846
 #define DEG_TO_RAD (M_PI / 180.0f)
@@ -69,7 +70,8 @@
 static const orientation_result_t * current_orientation;
 static const mpu_init_t mpu_params = {
     .sample_rate       = HZ_50,
-    .data_notification = INTERRUPT
+    .data_notification = INTERRUPT,
+    .interrupt_pin     = INTERRUPT_PIN
 };
 
 #ifdef PRINT_VALUES
@@ -104,8 +106,10 @@ int main(void)
     NRF_LOG_INFO("TWIM Init");
     twim_mpu_init();
 
+#ifdef UART_OUTPUT
     NRF_LOG_INFO("UARTE Init");
     uarte_mpu_init();
+#endif
 
     uint8_t who_am_i = mpu_who_am_i();
     NRF_LOG_INFO("MPU9250 should be 0x71 and is: 0x%02x", who_am_i);
@@ -116,12 +120,6 @@ int main(void)
         mpu_self_test();
         NRF_LOG_INFO("Calibration");
         mpu_calibrate();
-
-        if(mpu_params.data_notification == INTERRUPT)
-        {
-            NRF_LOG_INFO("GPIO Init");
-            gpio_int_init(INTERRUPT_PIN);
-        }
 
         NRF_LOG_INFO("MPU Init");
         mpu_init(&mpu_params);
@@ -157,7 +155,7 @@ int main(void)
                 }
                 else if(mpu_params.data_notification == INTERRUPT)
                 {
-                    exit_condition = gpio_new_data_ready();
+                    exit_condition = mpu_new_data_int();
                 }
 
             } while(!exit_condition);
@@ -167,10 +165,10 @@ int main(void)
             const mpu_data_t * mag_data = mpu_read_mag_data();
 
             float deltat = update_time();
-            #ifdef PRINT_VALUES
-                time_since_print += deltat;
-                samples_since_print++;
-            #endif
+        #ifdef PRINT_VALUES
+            time_since_print += deltat;
+            samples_since_print++;
+        #endif
 
             mahony_quaternion_update(accel_data->x, accel_data->y, accel_data->z,
                                      gyro_data->x * DEG_TO_RAD, gyro_data->y * DEG_TO_RAD, gyro_data->z * DEG_TO_RAD,
@@ -178,13 +176,15 @@ int main(void)
 
             current_orientation = calculate_orientation(get_q());
 
-            #ifdef PRINT_VALUES
-                print_values();
-            #endif
+        #ifdef PRINT_VALUES
+            print_values();
+        #endif
 
+        #ifdef UART_OUTPUT
             uarte_mpu_tx(current_orientation->yaw.bytes, sizeof(float));
             uarte_mpu_tx(current_orientation->pitch.bytes, sizeof(float));
             uarte_mpu_tx(current_orientation->roll.bytes, sizeof(float));
+        #endif
 
             NRF_LOG_FLUSH();
         }

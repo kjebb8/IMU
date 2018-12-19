@@ -28,8 +28,7 @@ _build/nrf52832_xxaa/main.c.o: ../../../main.c \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/lib/gcc/arm-none-eabi/6.3.1/include/stdbool.h \
  ../../../include/quaternion_filters.h ../../../config.h \
  ../../../include/app_time_keeper.h \
- ../../../include/orientation_calculator.h \
- ../../../include/gpio_data_int.h ../../../include/uarte_mpu.h \
+ ../../../include/orientation_calculator.h ../../../include/uarte_mpu.h \
  ../../../../../../components/libraries/log/nrf_log.h \
  ../../../../../../components/libraries/util/sdk_common.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/string.h \
@@ -137,8 +136,6 @@ _build/nrf52832_xxaa/main.c.o: ../../../main.c \
 ../../../include/app_time_keeper.h:
 
 ../../../include/orientation_calculator.h:
-
-../../../include/gpio_data_int.h:
 
 ../../../include/uarte_mpu.h:
 

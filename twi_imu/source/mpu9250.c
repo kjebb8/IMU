@@ -3,11 +3,10 @@
 #include "mpu9250.h"
 #include "mpu9250_support.h"
 #include "twim_mpu.h"
+#include "gpio_data_int.h"
 
 #include "nrf_delay.h"
 #include "nrf_log.h"
-
-static volatile bool m_new_imu_data = false;
 
 static uint8_t m_mpu_address = MPU9250_ADDRESS_AD0;
 static uint8_t m_ak_address = AK8963_ADDRESS;
@@ -514,6 +513,8 @@ void mpu_init(const mpu_init_t * p_params)
     {
         twim_mpu_write_register_byte(m_mpu_address, INT_PIN_CFG, 0x12);  // INT is 50 microsecond pulse and any read to clear
         twim_mpu_write_register_byte(m_mpu_address, INT_ENABLE, 0x01);  // Enable data ready (bit 0) interrupt
+
+        gpio_int_init(p_params->interrupt_pin);
     }
 
     nrf_delay_ms(100);
@@ -564,7 +565,7 @@ void mpu_init_ak8963(void)
 
 bool mpu_new_data_int(void)
 {
-    return m_new_imu_data;
+    return gpio_new_data_ready();
 }
 
 bool mpu_new_data_poll(void)
