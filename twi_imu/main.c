@@ -55,6 +55,7 @@
 #include "app_time_keeper.h"
 #include "orientation_calculator.h"
 #include "gpio_data_int.h"
+#include "uarte_mpu.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -81,9 +82,9 @@ static void print_values(void)
 {
     if(time_since_print > 0.5f)
     {
-        NRF_LOG_RAW_INFO("\r\nYaw: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(current_orientation->yaw));
-        NRF_LOG_RAW_INFO("\tPitch: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(current_orientation->pitch));
-        NRF_LOG_RAW_INFO("\tRoll: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(current_orientation->roll));
+        NRF_LOG_RAW_INFO("\r\nYaw: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(current_orientation->yaw.float_val));
+        NRF_LOG_RAW_INFO("\tPitch: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(current_orientation->pitch.float_val));
+        NRF_LOG_RAW_INFO("\tRoll: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(current_orientation->roll.float_val));
         NRF_LOG_RAW_INFO("\tRate: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(samples_since_print / time_since_print));
 
         samples_since_print = 0;
@@ -102,6 +103,9 @@ int main(void)
 
     NRF_LOG_INFO("TWIM Init");
     twim_mpu_init();
+
+    NRF_LOG_INFO("UARTE Init");
+    uarte_mpu_init();
 
     uint8_t who_am_i = mpu_who_am_i();
     NRF_LOG_INFO("MPU9250 should be 0x71 and is: 0x%02x", who_am_i);
@@ -177,6 +181,10 @@ int main(void)
             #ifdef PRINT_VALUES
                 print_values();
             #endif
+
+            uarte_mpu_tx(current_orientation->yaw.bytes, sizeof(float));
+            uarte_mpu_tx(current_orientation->pitch.bytes, sizeof(float));
+            uarte_mpu_tx(current_orientation->roll.bytes, sizeof(float));
 
             NRF_LOG_FLUSH();
         }

@@ -49,6 +49,7 @@ SRC_FILES += \
   $(PROJ_DIR)/source/app_time_keeper.c \
   $(PROJ_DIR)/source/gpio_data_int.c \
   $(PROJ_DIR)/source/orientation_calculator.c \
+  $(PROJ_DIR)/source/uarte_mpu.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_rtc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power_clock.c \

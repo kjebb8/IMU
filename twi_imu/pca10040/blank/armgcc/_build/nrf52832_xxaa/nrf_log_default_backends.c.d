@@ -69,8 +69,7 @@ _build/nrf52832_xxaa/nrf_log_default_backends.c.o: \
  ../../../../../../components/libraries/log/src/nrf_log_internal.h \
  ../../../../../../components/libraries/log/nrf_log_types.h \
  ../../../../../../components/libraries/util/nrf_assert.h \
- ../../../../../../components/libraries/log/nrf_log_backend_rtt.h \
- ../../../../../../components/libraries/log/nrf_log_backend_uart.h
+ ../../../../../../components/libraries/log/nrf_log_backend_rtt.h
 
 ../../../../../../components/libraries/util/sdk_common.h:
 
@@ -211,5 +210,3 @@ _build/nrf52832_xxaa/nrf_log_default_backends.c.o: \
 ../../../../../../components/libraries/util/nrf_assert.h:
 
 ../../../../../../components/libraries/log/nrf_log_backend_rtt.h:
-
-../../../../../../components/libraries/log/nrf_log_backend_uart.h:

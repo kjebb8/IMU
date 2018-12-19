@@ -26,7 +26,6 @@ typedef struct
     mpu_data_ready_t  data_notification;
 } mpu_init_t;
 
-
 typedef struct
 {
     mpu_data_type_t type;

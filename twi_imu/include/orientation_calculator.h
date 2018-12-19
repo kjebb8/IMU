@@ -3,11 +3,17 @@
 
 #include <stdint.h>
 
+typedef union
+{
+    float    float_val;
+    uint8_t  bytes[sizeof(float)];
+} float_byte_t;
+
 typedef struct
 {
-    float yaw;
-    float pitch;
-    float roll;
+    float_byte_t yaw;
+    float_byte_t pitch;
+    float_byte_t roll;
 } orientation_result_t;
 
 const orientation_result_t * calculate_orientation(const float * q); //q must be size for array

@@ -1,8 +1,12 @@
 #include "twim_mpu.h"
+#include "nrfx_twim.h"
 #include "config.h"
 
 #include "nrf_delay.h"
 #include "nrf_log.h"
+
+/* TWIM instance ID. */
+#define TWIM_INSTANCE_ID 0
 
 /* TWIM instance. */
 static const nrfx_twim_t m_twim = NRFX_TWIM_INSTANCE(TWIM_INSTANCE_ID);
@@ -79,7 +83,7 @@ void twim_mpu_write_register_byte(uint8_t slave_address, uint8_t register_addres
     wait_for_xfer();
 }
 
-void twim_mpu_read_register(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, size_t length)
+void twim_mpu_read_register(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, uint8_t length)
 {
     ret_code_t err_code;
     m_register_address = register_address; //If transfer is asynchronous, store the value off the stack
@@ -98,7 +102,7 @@ void twim_mpu_read_register(uint8_t slave_address, uint8_t register_address, uin
     wait_for_xfer();
 }
 
-void twim_mpu_read_register_async(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, size_t length, twim_mpu_cb_t cb)
+void twim_mpu_read_register_async(uint8_t slave_address, uint8_t register_address, uint8_t * p_data, uint8_t length, twim_mpu_cb_t cb)
 {
     // ret_code_t err_code;
     // m_register_address = register_address; //If transfer is asynchronous, store the value off the stack

@@ -1,5 +1,5 @@
-_build/nrf52832_xxaa/twim_mpu.c.o: ../../../source/twim_mpu.c \
- ../../../include/twim_mpu.h \
+_build/nrf52832_xxaa/uarte_mpu.c.o: ../../../source/uarte_mpu.c \
+ ../../../include/uarte_mpu.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/lib/gcc/arm-none-eabi/6.3.1/include/stdint.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/stdint.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/machine/_default_types.h \
@@ -7,7 +7,7 @@ _build/nrf52832_xxaa/twim_mpu.c.o: ../../../source/twim_mpu.c \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/_newlib_version.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/sys/_intsup.h \
  /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/sys/_stdint.h \
- ../../../../../../modules/nrfx/drivers/include/nrfx_twim.h \
+ ../../../../../../modules/nrfx/drivers/include/nrfx_uarte.h \
  ../../../../../../modules/nrfx/nrfx.h \
  ../../../../../../integration/nrfx/nrfx_config.h ../config/sdk_config.h \
  ../../../../../../modules/nrfx/drivers/nrfx_common.h \
@@ -62,23 +62,11 @@ _build/nrf52832_xxaa/twim_mpu.c.o: ../../../source/twim_mpu.c \
  ../../../../../../components/libraries/util/sdk_errors.h \
  ../../../../../../components/libraries/util/sdk_resources.h \
  ../../../../../../modules/nrfx/drivers/nrfx_errors.h \
- ../../../../../../modules/nrfx/hal/nrf_twim.h ../../../config.h \
- ../../../../../../components/libraries/delay/nrf_delay.h \
- ../../../../../../components/libraries/log/nrf_log.h \
- ../../../../../../components/libraries/util/sdk_common.h \
- /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/string.h \
- /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/sys/string.h \
- ../../../../../../components/libraries/util/sdk_os.h \
- ../../../../../../components/libraries/util/app_util.h \
- ../../../../../../components/libraries/util/sdk_macros.h \
- ../../../../../../components/libraries/experimental_section_vars/nrf_section.h \
- ../../../../../../components/libraries/strerror/nrf_strerror.h \
- ../../../../../../components/libraries/log/src/nrf_log_internal.h \
- ../../../../../../components/libraries/log/nrf_log_instance.h \
- ../../../../../../components/libraries/log/nrf_log_types.h \
- ../../../../../../components/libraries/log/nrf_log_types.h
+ ../../../../../../modules/nrfx/hal/nrf_uarte.h \
+ ../../../../../../components/boards/pca10040.h \
+ ../../../../../../modules/nrfx/hal/nrf_gpio.h
 
-../../../include/twim_mpu.h:
+../../../include/uarte_mpu.h:
 
 /usr/local/gcc-arm-none-eabi-6-2017-q1-update/lib/gcc/arm-none-eabi/6.3.1/include/stdint.h:
 
@@ -94,7 +82,7 @@ _build/nrf52832_xxaa/twim_mpu.c.o: ../../../source/twim_mpu.c \
 
 /usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/sys/_stdint.h:
 
-../../../../../../modules/nrfx/drivers/include/nrfx_twim.h:
+../../../../../../modules/nrfx/drivers/include/nrfx_uarte.h:
 
 ../../../../../../modules/nrfx/nrfx.h:
 
@@ -206,34 +194,8 @@ _build/nrf52832_xxaa/twim_mpu.c.o: ../../../source/twim_mpu.c \
 
 ../../../../../../modules/nrfx/drivers/nrfx_errors.h:
 
-../../../../../../modules/nrfx/hal/nrf_twim.h:
+../../../../../../modules/nrfx/hal/nrf_uarte.h:
 
-../../../config.h:
+../../../../../../components/boards/pca10040.h:
 
-../../../../../../components/libraries/delay/nrf_delay.h:
-
-../../../../../../components/libraries/log/nrf_log.h:
-
-../../../../../../components/libraries/util/sdk_common.h:
-
-/usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/string.h:
-
-/usr/local/gcc-arm-none-eabi-6-2017-q1-update/arm-none-eabi/include/sys/string.h:
-
-../../../../../../components/libraries/util/sdk_os.h:
-
-../../../../../../components/libraries/util/app_util.h:
-
-../../../../../../components/libraries/util/sdk_macros.h:
-
-../../../../../../components/libraries/experimental_section_vars/nrf_section.h:
-
-../../../../../../components/libraries/strerror/nrf_strerror.h:
-
-../../../../../../components/libraries/log/src/nrf_log_internal.h:
-
-../../../../../../components/libraries/log/nrf_log_instance.h:
-
-../../../../../../components/libraries/log/nrf_log_types.h:
-
-../../../../../../components/libraries/log/nrf_log_types.h:
+../../../../../../modules/nrfx/hal/nrf_gpio.h:

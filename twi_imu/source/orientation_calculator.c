@@ -9,10 +9,10 @@ static orientation_result_t m_mpu_result; //Yaw, Pitch and Roll
 
 const orientation_result_t * calculate_orientation(const float * q)
 {
-    m_mpu_result.yaw   = RAD_TO_DEG * atan2(2.0f * (q[1] * q[2] + q[0] * q[3]),
+    m_mpu_result.yaw.float_val   = RAD_TO_DEG * atan2(2.0f * (q[1] * q[2] + q[0] * q[3]),
                                             q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
-    m_mpu_result.pitch = RAD_TO_DEG * -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-    m_mpu_result.roll  = RAD_TO_DEG * atan2(2.0f * (q[0] * q[1] + q[2] * q[3]),
+    m_mpu_result.pitch.float_val = RAD_TO_DEG * -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+    m_mpu_result.roll.float_val  = RAD_TO_DEG * atan2(2.0f * (q[0] * q[1] + q[2] * q[3]),
                                             q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
 
     return &m_mpu_result;
